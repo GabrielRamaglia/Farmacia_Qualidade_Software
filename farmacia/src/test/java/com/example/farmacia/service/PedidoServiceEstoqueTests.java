@@ -2,6 +2,7 @@ package com.example.farmacia.service;
 
 import com.example.farmacia.adapter.FornecedorAdapter;
 import com.example.farmacia.model.CanalVenda;
+import com.example.farmacia.model.Cliente;
 import com.example.farmacia.model.ItemPedido;
 import com.example.farmacia.model.Pedido;
 import com.example.farmacia.model.Produto;
@@ -17,12 +18,14 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.*;
 
 class PedidoServiceEstoqueTests {
 
     private PedidoRepository pedidoRepository;
     private ProdutoRepository produtoRepository;
+    private ClienteRepository clienteRepository;
     private SefazService sefaz;
     private AnsService ans;
     private FornecedorAdapter fornecedor;
@@ -33,7 +36,7 @@ class PedidoServiceEstoqueTests {
     void setUp() {
         pedidoRepository = mock(PedidoRepository.class);
         produtoRepository = mock(ProdutoRepository.class);
-        ClienteRepository clienteRepository = mock(ClienteRepository.class);
+        clienteRepository = mock(ClienteRepository.class);
         sefaz = mock(SefazService.class);
         ans = mock(AnsService.class);
         fornecedor = mock(FornecedorAdapter.class);
@@ -74,6 +77,65 @@ class PedidoServiceEstoqueTests {
         assertEquals("Estoque insuficiente para Produto de teste. Disponível: 5.", exception.getMessage());
         assertEquals(5, produto.getQuantidadeEstoque());
         verify(pedidoRepository, never()).save(any(Pedido.class));
+    }
+
+    @Test
+    void processarPedidoDeveRejeitarMedicamentoControladoSemReceita() {
+        produto.setTipoProduto(TipoProduto.CONTROLADO);
+        Pedido pedido = criarPedido(1);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.processarPedido(pedido));
+
+        assertEquals(
+                "Venda bloqueada: Medicamentos controlados exigem a confirmação da receita médica.",
+                exception.getMessage());
+        verify(pedidoRepository, never()).save(any(Pedido.class));
+        verify(ans, never()).enviarReceita(any());
+    }
+
+    @Test
+    void processarPedidoDeveExigirReceitaMesmoComClienteIdentificado() {
+        produto.setTipoProduto(TipoProduto.CONTROLADO);
+        Cliente cliente = new Cliente();
+        cliente.setId(1L);
+        cliente.setCpf("12345678900");
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
+
+        Pedido pedido = criarPedido(1);
+        Cliente clientePedido = new Cliente();
+        clientePedido.setId(1L);
+        pedido.setCliente(clientePedido);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.processarPedido(pedido));
+
+        assertEquals(
+                "Venda bloqueada: Medicamentos controlados exigem a confirmação da receita médica.",
+                exception.getMessage());
+        verify(pedidoRepository, never()).save(any(Pedido.class));
+    }
+
+    @Test
+    void processarPedidoDeveAceitarMedicamentoControladoComReceitaEClienteIdentificado() {
+        produto.setTipoProduto(TipoProduto.CONTROLADO);
+        Cliente cliente = new Cliente();
+        cliente.setId(1L);
+        cliente.setCpf("12345678900");
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
+
+        Pedido pedido = criarPedido(1);
+        Cliente clientePedido = new Cliente();
+        clientePedido.setId(1L);
+        pedido.setCliente(clientePedido);
+        pedido.setReceitaMedica(true);
+
+        service.processarPedido(pedido);
+
+        verify(pedidoRepository).save(pedido);
+        verify(ans).enviarReceita(contains("12345678900"));
     }
 
     private Pedido criarPedido(int quantidade) {

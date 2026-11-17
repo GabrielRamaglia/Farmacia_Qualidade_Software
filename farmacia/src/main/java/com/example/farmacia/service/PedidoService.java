@@ -96,7 +96,12 @@ public class PedidoService {
             valorTotalPedido += (precoFinalUnitario * item.getQuantidade());
         }
 
-        // 2. Validação obrigatória do PDF: Medicação controlada EXIGE dados do cliente
+        // 2. Medicamentos controlados exigem receita e identificação do cliente
+        if (contemControlado && !pedido.isReceitaMedica()) {
+            throw new IllegalArgumentException(
+                    "Venda bloqueada: Medicamentos controlados exigem a confirmação da receita médica.");
+        }
+
         if (contemControlado && (pedido.getCliente() == null || pedido.getCliente().getCpf() == null)) {
             throw new RuntimeException("Venda bloqueada: Medicamentos controlados exigem a coleta dos dados do cliente.");
         }

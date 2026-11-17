@@ -20,6 +20,7 @@ public class Pedido {
     private Long vendedorId; // Usado para calcular a comissão caso seja venda de balcão
     private double valorTotal;
     private double comissaoGerada;
+    private boolean receitaMedica;
 
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = true) // Nulo se o cliente não quiser se cadastrar
@@ -82,6 +83,14 @@ public class Pedido {
 
     public void setComissaoGerada(double comissaoGerada) {
         this.comissaoGerada = comissaoGerada;
+    }
+
+    public boolean isReceitaMedica() {
+        return receitaMedica;
+    }
+
+    public void setReceitaMedica(boolean receitaMedica) {
+        this.receitaMedica = receitaMedica;
     }
 
     public Cliente getCliente() {

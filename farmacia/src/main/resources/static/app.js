@@ -183,6 +183,7 @@ document.querySelector("#submit-sale").addEventListener("click", async (event) =
     canalVenda: document.querySelector("#channel").value,
     vendedorId: sellerId ? Number(sellerId) : null,
     cpfNaNota: cpf || null,
+    receitaMedica: document.querySelector("#medical-prescription").checked,
     cliente: selectedCustomer ? { id: selectedCustomer.id } : null,
     itens: items
   };
